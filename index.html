@@ -53,12 +53,44 @@
     font-size: .88rem; color: var(--muted);
   }
 
-  form { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
-  input, select, button {
+  .tabs {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 0 16px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 4px;
+  }
+  .tabs button { border: 0; min-height: 40px; padding: 8px 6px; font-size: .92rem; background: transparent; color: var(--muted); }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); }
+
+  form { display: grid; grid-template-columns: 1fr 5.5rem auto; gap: 8px; }
+  input, select, button, textarea {
     font: inherit; border-radius: 10px; border: 1px solid var(--border);
     padding: 12px 14px; background: var(--card); color: var(--text); min-height: 48px;
   }
-  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input[type="number"] { text-align: center; padding-inline: 8px; }
+  #customForm { grid-template-columns: 1fr; }
+  #customForm textarea { min-height: 120px; resize: vertical; }
+  .hint { color: var(--muted); font-size: .85rem; margin: -4px 0 0; }
+
+  .coin-area { display: grid; justify-items: center; gap: 18px; padding: 12px 0 8px; }
+  .coin-stage { perspective: 900px; width: 170px; height: 170px; }
+  .coin-stage.tossing { animation: toss 2.2s cubic-bezier(.3,.7,.4,1); }
+  .coin {
+    position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
+    transition: transform 2.2s cubic-bezier(.2,.8,.25,1);
+  }
+  .face {
+    position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden;
+    display: grid; place-items: center; font-weight: 800; font-size: 1.5rem; letter-spacing: .06em;
+    color: #5c3d00; border: 6px solid #c9971c;
+    background: radial-gradient(circle at 35% 30%, #fff3c4, #f5c542 45%, #d9a21b 80%);
+    box-shadow: inset 0 0 0 4px rgba(255,255,255,.35), 0 8px 18px rgba(0,0,0,.25);
+  }
+  .face.tails { transform: rotateY(180deg); background: radial-gradient(circle at 35% 30%, #f1f3f5, #c4c9cf 45%, #9097a0 80%); color: #2b3036; border-color: #868e96; }
+  .face span { font-size: 3rem; line-height: 1; display: block; text-align: center; }
+  @keyframes toss { 0% { transform: translateY(0) } 40% { transform: translateY(-90px) scale(1.12) } 100% { transform: translateY(0) } }
+  .coin-result { font-size: clamp(1.6rem, 7vw, 2.4rem); font-weight: 800; min-height: 1.3em; text-align: center; }
+  .coin-tally { color: var(--muted); font-size: .9rem; }
+  #flip { min-width: 200px; }
   button { cursor: pointer; font-weight: 600; }
   button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
   button:disabled { opacity: .5; cursor: not-allowed; }
@@ -115,37 +147,65 @@
 <body>
 <main>
   <h1>🥊 Down for the Count</h1>
-  <p class="tagline">Can't decide? Ask for a list of anything, then let fate strike them off one by one.</p>
+  <p class="tagline">Can't decide? Make a list of anything, then let fate strike them off one by one.</p>
 
-  <div class="ideas" id="ideas">
-    <button type="button">takeaway near Tuart Hill WA</button>
-    <button type="button">colours to paint the bedroom</button>
-    <button type="button">movies for a cosy night in</button>
-    <button type="button">weekend activities in Perth</button>
+  <div class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" aria-selected="true" data-panel="aiPanel">✨ Ask Gemini</button>
+    <button type="button" role="tab" aria-selected="false" data-panel="customPanel">✍️ My list</button>
+    <button type="button" role="tab" aria-selected="false" data-panel="coinPanel">🪙 Coin flip</button>
   </div>
 
-  <form id="search">
-    <input id="q" type="search" placeholder="takeaway near Tuart Hill WA" required aria-label="What should we knock out?">
-    <select id="count" aria-label="Number of options">
-      <option value="10">10</option>
-      <option value="20" selected>20</option>
-      <option value="30">30</option>
-    </select>
-    <button class="primary" id="go" type="submit">Get list</button>
-  </form>
+  <section id="aiPanel" role="tabpanel">
+    <div class="ideas" id="ideas">
+      <button type="button">takeaway near Tuart Hill WA</button>
+      <button type="button">colours to paint the bedroom</button>
+      <button type="button">movies for a cosy night in</button>
+      <button type="button">weekend activities in Perth</button>
+    </div>
 
-  <div class="status" id="status" role="status" aria-live="polite"></div>
+    <form id="search">
+      <input id="q" type="search" placeholder="takeaway near Tuart Hill WA" required aria-label="What should we knock out?">
+      <input id="count" type="number" inputmode="numeric" min="2" max="50" value="20" required aria-label="How many options (2 to 50)" title="How many options (2 to 50)">
+      <button class="primary" id="go" type="submit">Get list</button>
+    </form>
+  </section>
 
-  <section id="winner" class="winner" hidden aria-live="polite"></section>
+  <section id="customPanel" role="tabpanel" hidden>
+    <form id="customForm">
+      <textarea id="customItems" required aria-label="Your options" placeholder="tree, frog, dog&#10;or one per line…"></textarea>
+      <p class="hint">Separate options with commas or new lines.</p>
+      <button class="primary" type="submit">Use my list</button>
+    </form>
+  </section>
 
-  <div class="controls" id="controls" hidden>
-    <button class="primary" id="start" type="button">Start the knockout</button>
-    <button id="reset" type="button">Reset</button>
+  <div id="knockout">
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <section id="winner" class="winner" hidden aria-live="polite"></section>
+
+    <div class="controls" id="controls" hidden>
+      <button class="primary" id="start" type="button">Start the knockout</button>
+      <button id="reset" type="button">Reset</button>
+    </div>
+
+    <ol id="list"></ol>
   </div>
 
-  <ol id="list"></ol>
+  <section id="coinPanel" role="tabpanel" hidden>
+    <div class="coin-area">
+      <div class="coin-stage" id="coinStage">
+        <div class="coin" id="coin">
+          <div class="face heads"><div><span>👑</span>HEADS</div></div>
+          <div class="face tails"><div><span>🦘</span>TAILS</div></div>
+        </div>
+      </div>
+      <div class="coin-result" id="coinResult" aria-live="polite"></div>
+      <button class="primary" id="flip" type="button">Flip the coin</button>
+      <div class="coin-tally" id="coinTally">Heads 0 · Tails 0</div>
+    </div>
+  </section>
 
-  <footer>Lists generated by Gemini. Places can be out of date, so tap through to Google Maps to check before you go.</footer>
+  <footer>Gemini lists can be out of date, so tap through to Google Maps to check places before you go.</footer>
 </main>
 
 <script>
@@ -252,7 +312,8 @@ $("search").addEventListener("submit", async e => {
   if (running) return;
   if (API_KEY.startsWith("__")) { setStatus("No API key configured for this build.", true); return; }
   const q = $("q").value.trim();
-  const wanted = Number($("count").value);
+  const wanted = Math.min(50, Math.max(2, Math.round(Number($("count").value)) || 20));
+  $("count").value = wanted;
   $("go").disabled = true;
   $("controls").hidden = true;
   $("winner").hidden = true;
@@ -272,6 +333,65 @@ $("search").addEventListener("submit", async e => {
   } finally {
     $("go").disabled = false;
   }
+});
+
+$("customForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (running) return;
+  const seen = new Set();
+  items = $("customItems").value.split(/[\n,]+/).map(s => s.trim()).filter(s => {
+    const key = s.toLowerCase();
+    if (!s || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map(name => ({ name }));
+  if (items.length < 2) { $("list").innerHTML = ""; $("controls").hidden = true; setStatus("Add at least two options.", true); return; }
+  render();
+  setStatus(`${items.length} contenders. Ready when you are.`);
+});
+
+$("tabs").addEventListener("click", e => {
+  const tab = e.target.closest("button");
+  if (!tab || running || coinBusy) return;
+  for (const b of $("tabs").children) {
+    b.setAttribute("aria-selected", b === tab);
+    $(b.dataset.panel).hidden = b !== tab;
+  }
+  const isCoin = tab.dataset.panel === "coinPanel";
+  $("knockout").hidden = isCoin;
+  if (!isCoin) {
+    // Each list mode starts with a clean board.
+    items = [];
+    $("list").innerHTML = "";
+    $("controls").hidden = true;
+    $("winner").hidden = true;
+    setStatus("");
+  }
+});
+
+let coinAngle = 0, coinBusy = false;
+const tally = { Heads: 0, Tails: 0 };
+$("flip").addEventListener("click", () => {
+  if (coinBusy) return;
+  coinBusy = true;
+  $("flip").disabled = true;
+  $("coinResult").textContent = "";
+  const heads = crypto.getRandomValues(new Uint8Array(1))[0] < 128;
+  // Always spin forward several full turns, landing on the chosen face.
+  coinAngle = Math.ceil(coinAngle / 360) * 360 + 360 * 6 + (heads ? 0 : 180);
+  $("coin").style.transform = `rotateY(${coinAngle}deg)`;
+  const stage = $("coinStage");
+  stage.classList.remove("tossing");
+  void stage.offsetWidth; // restart the toss animation
+  stage.classList.add("tossing");
+  setTimeout(() => {
+    const result = heads ? "Heads" : "Tails";
+    tally[result]++;
+    $("coinResult").textContent = `${heads ? "👑" : "🦘"} ${result}!`;
+    $("coinTally").textContent = `Heads ${tally.Heads} · Tails ${tally.Tails}`;
+    coinBusy = false;
+    $("flip").disabled = false;
+  }, 2250);
 });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
