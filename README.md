@@ -1,4 +1,4 @@
-# Takeaway Knockout
+# Down for the Count
 
 Can't decide? Type anything ("takeaway near Tuart Hill WA", "colours to paint the bedroom", "movies for a cosy night in"), pick 10, 20 or 30, and Gemini (free tier) builds the list. Then the knockout strikes options off one by one until a winner is left.
 
