@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Takeaway Knockout</title>
+<meta name="description" content="Can't decide on takeaway? Search nearby places and let the knockout pick one.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥡</text></svg>">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f5f2;
+    --card: #ffffff;
+    --text: #1d1b19;
+    --muted: #6b6560;
+    --border: #e4dfd9;
+    --accent: #d9480f;
+    --accent-text: #ffffff;
+    --strike: #c92a2a;
+    --win-bg: #fff4e6;
+    --win-border: #f59f00;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141312;
+      --card: #1f1d1b;
+      --text: #f1ede9;
+      --muted: #a39b94;
+      --border: #34302c;
+      --accent: #ff7a3d;
+      --accent-text: #1a0d05;
+      --strike: #ff6b6b;
+      --win-bg: #2b2014;
+      --win-border: #f59f00;
+      --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); margin: 0 0 4px; letter-spacing: -.02em; }
+  .tagline { color: var(--muted); margin: 0 0 20px; }
+
+  form { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+  input, select, button {
+    font: inherit; border-radius: 10px; border: 1px solid var(--border);
+    padding: 12px 14px; background: var(--card); color: var(--text); min-height: 48px;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { cursor: pointer; font-weight: 600; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  @media (max-width: 520px) {
+    form { grid-template-columns: 1fr 1fr; }
+    form input { grid-column: 1 / -1; }
+  }
+
+  .status { min-height: 1.5em; margin: 14px 0 8px; color: var(--muted); }
+  .status.error { color: var(--strike); }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .controls button { flex: 1 1 auto; }
+  [hidden] { display: none !important; }
+
+  ol#list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  ol#list li {
+    position: relative; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 14px; box-shadow: var(--shadow);
+    transition: opacity .5s ease, transform .5s ease, background .2s;
+  }
+  li .name { font-weight: 600; }
+  li .meta { color: var(--muted); font-size: .88rem; }
+  li .name a { color: inherit; text-decoration: none; }
+  li .name a:hover { text-decoration: underline; }
+  li .strike {
+    position: absolute; left: 10px; right: 10px; top: 50%; height: 3px;
+    background: var(--strike); border-radius: 2px;
+    transform: scaleX(0); transform-origin: left; transition: transform .35s ease-out;
+  }
+  li.out .strike { transform: scaleX(1); }
+  li.out { opacity: .38; transform: scale(.98); }
+  li.flash { background: color-mix(in srgb, var(--strike) 18%, var(--card)); }
+
+  .winner {
+    text-align: center; background: var(--win-bg); border: 2px solid var(--win-border);
+    border-radius: 18px; padding: 28px 18px; margin-bottom: 16px;
+    animation: pop .5s cubic-bezier(.2,1.6,.4,1);
+  }
+  .winner .label { text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; color: var(--muted); }
+  .winner h2 { font-size: clamp(1.8rem, 8vw, 3rem); margin: 6px 0; line-height: 1.1; overflow-wrap: anywhere; }
+  .winner p { margin: 0 0 16px; color: var(--muted); }
+  .winner a.btn {
+    display: inline-block; background: var(--accent); color: var(--accent-text);
+    padding: 12px 20px; border-radius: 10px; font-weight: 700; text-decoration: none;
+  }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: .01s !important; animation-duration: .01s !important; }
+  }
+  footer { margin-top: 32px; color: var(--muted); font-size: .8rem; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🥡 Takeaway Knockout</h1>
+  <p class="tagline">Can't decide? Search, then let fate strike them off one by one.</p>
+
+  <form id="search">
+    <input id="q" type="search" placeholder="takeaway near Tuart Hill WA" required aria-label="Search">
+    <select id="count" aria-label="Number of results">
+      <option value="10">10</option>
+      <option value="20" selected>20</option>
+      <option value="30">30</option>
+    </select>
+    <button class="primary" id="go" type="submit">Search</button>
+  </form>
+
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+
+  <section id="winner" class="winner" hidden aria-live="polite"></section>
+
+  <div class="controls" id="controls" hidden>
+    <button class="primary" id="start" type="button">Start the knockout</button>
+    <button id="reset" type="button">Reset</button>
+  </div>
+
+  <ol id="list"></ol>
+
+  <footer>Place data from Google.</footer>
+</main>
+
+<script>
+// Replaced at deploy time by the GitHub Actions workflow.
+const API_KEY = "__GOOGLE_PLACES_API_KEY__";
+const ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
+const FIELDS = "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,nextPageToken";
+
+const $ = id => document.getElementById(id);
+let places = [];
+let running = false;
+
+function setStatus(msg, isError = false) {
+  $("status").textContent = msg;
+  $("status").classList.toggle("error", isError);
+}
+
+async function fetchPage(textQuery, pageToken) {
+  const body = { textQuery, pageSize: 20 };
+  if (pageToken) body.pageToken = pageToken;
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Goog-Api-Key": API_KEY, "X-Goog-FieldMask": FIELDS },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error?.message || `Request failed (${res.status})`);
+  return data;
+}
+
+async function searchPlaces(textQuery, wanted) {
+  const out = [];
+  let token;
+  do {
+    const data = await fetchPage(textQuery, token);
+    out.push(...(data.places || []));
+    token = data.nextPageToken;
+  } while (token && out.length < wanted);
+  return out.slice(0, wanted);
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function ratingText(p) {
+  return p.rating ? `★ ${p.rating.toFixed(1)}${p.userRatingCount ? ` (${p.userRatingCount})` : ""}` : "No rating";
+}
+
+function render() {
+  $("list").innerHTML = places.map((p, i) => `
+    <li data-i="${i}">
+      <div class="name"><a href="${esc(p.googleMapsUri)}" target="_blank" rel="noopener">${esc(p.displayName?.text)}</a></div>
+      <div class="meta">${esc(ratingText(p))} · ${esc(p.formattedAddress)}</div>
+      <span class="strike" aria-hidden="true"></span>
+    </li>`).join("");
+  $("controls").hidden = places.length < 2;
+  $("start").disabled = false;
+  $("winner").hidden = true;
+}
+
+$("search").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (running) return;
+  if (API_KEY.startsWith("__")) { setStatus("No API key configured for this build.", true); return; }
+  const q = $("q").value.trim();
+  const wanted = Number($("count").value);
+  $("go").disabled = true;
+  $("controls").hidden = true;
+  $("winner").hidden = true;
+  $("list").innerHTML = "";
+  setStatus("Searching…");
+  try {
+    places = await searchPlaces(q, wanted);
+    if (!places.length) { setStatus("No places found. Try a different search."); return; }
+    setStatus(`Found ${places.length} place${places.length === 1 ? "" : "s"}${places.length < wanted ? ` (Google only had ${places.length})` : ""}.`);
+    render();
+  } catch (err) {
+    setStatus(`Search failed: ${err.message}`, true);
+  } finally {
+    $("go").disabled = false;
+  }
+});
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+$("start").addEventListener("click", async () => {
+  if (running) return;
+  running = true;
+  $("start").disabled = true;
+  $("go").disabled = true;
+  $("reset").disabled = true;
+  $("winner").hidden = true;
+
+  const items = [...$("list").children];
+  items.forEach(li => li.classList.remove("out", "flash"));
+  const order = items.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const winnerIdx = order.pop();
+  setStatus("Knocking them out…");
+
+  for (let k = 0; k < order.length; k++) {
+    const left = order.length - k; // contenders remaining besides the winner
+    const delay = left > 4 ? 380 : [1700, 1250, 900, 650][left - 1];
+    await sleep(delay);
+    const li = items[order[k]];
+    li.classList.add("flash");
+    li.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    await sleep(120);
+    li.classList.remove("flash");
+    li.classList.add("out");
+    setStatus(`${left} left to knock out…`);
+  }
+
+  await sleep(600);
+  const w = places[winnerIdx];
+  $("winner").innerHTML = `
+    <div class="label">Tonight's winner</div>
+    <h2>${esc(w.displayName?.text)}</h2>
+    <p>${esc(ratingText(w))} · ${esc(w.formattedAddress)}</p>
+    <a class="btn" href="${esc(w.googleMapsUri)}" target="_blank" rel="noopener">Open in Google Maps</a>`;
+  $("winner").hidden = false;
+  $("winner").scrollIntoView({ block: "start", behavior: "smooth" });
+  setStatus("We have a winner!");
+  running = false;
+  $("go").disabled = false;
+  $("reset").disabled = false;
+});
+
+$("reset").addEventListener("click", () => {
+  if (running) return;
+  render();
+  setStatus(`${places.length} contenders ready.`);
+});
+</script>
+</body>
+</html>
